@@ -16,6 +16,11 @@ x = lorData[:, 1]
 y = lorData[:, 2]
 z = lorData[:, 3]
 
+# plot
+xyzs = np.array((x,y,z))
+ax = plt.figure().add_subplot(projection='3d')
+ax.plot(*xyzs, lw=0.5)
+
 # ---- AMI ----- #
 import teaspoon.parameter_selection.MI_delay as AMI
 d = AMI.MI_for_delay(x, plotting=False, method='kraskov 1', h_method='sqrt', k=2, ranking=True)
@@ -25,6 +30,41 @@ d = AMI.MI_for_delay(x, plotting=False, method='kraskov 1', h_method='sqrt', k=2
 import teaspoon.parameter_selection.FNN_n as FNN
 m = FNN.FNN_n(ts=x, tau=d, maxDim=10, plotting=False)[1]
 # 2 instead of 3
+
+# ----- CRQA ---- #
+from pyrqa.settings import Settings
+from pyrqa.time_series import TimeSeries
+from pyrqa.computation import RQAComputation
+from pyrqa.analysis_type import Cross
+from pyrqa.neighbourhood import FixedRadius
+from pyrqa.metric import EuclideanMetric
+
+# create time series
+time_series_z1 = TimeSeries(z.tolist(), embedding_dimension=3, time_delay=9)
+time_series_z2 = TimeSeries(z.tolist(), embedding_dimension=3, time_delay=9)
+time_series = (time_series_z1, time_series_z2)
+
+settings = Settings(time_series,
+                    analysis_type=Cross,
+                    neighbourhood=FixedRadius(20),
+                    similarity_measure=EuclideanMetric,
+                    theiler_corrector=0)
+computation = RQAComputation.create(settings, verbose=True)
+
+# run CRQA
+CRQA_result = computation.run()
+print(CRQA_result)
+
+# plot CRP
+from pyrqa.image_generator import ImageGenerator
+from pyrqa.computation import RPComputation
+computation = RPComputation.create(settings)
+CRP_result = computation.run()
+img = ImageGenerator.generate_recurrence_plot(CRP_result.recurrence_matrix_reverse)#.recurrence_matrix_reverse)
+img.show()
+
+# ImageGenerator.save_recurrence_plot(CRP_result.recurrence_matrix_reverse, 'cross_recurrence_plot.png')
+
 
 
 """ based on Analyzing Multivariate Dynamics Using Cross-Recurrence Quantification Analysis (CRQA),
